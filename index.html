@@ -1,0 +1,239 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcoAlert | Centro Inteligente de Monitoreo</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo-area">
+      <h1>🛰 EcoAlert</h1>
+      <p>Centro inteligente de monitoreo y detección temprana de incendios forestales.</p>
+    </div>
+    <div class="system-info">
+      <div class="info-box">
+        <span>Estado</span>
+        <strong id="serverStatus">🟢 EN LÍNEA</strong>
+      </div>
+      <div class="info-box">
+        <span>Hora</span>
+        <strong id="clock">00:00:00</strong>
+      </div>
+      <div class="info-box">
+        <span>Fecha</span>
+        <strong id="today">--</strong>
+      </div>
+      <div class="info-box">
+        <span>Sensores</span>
+        <strong id="sensorCounter">0</strong>
+      </div>
+      <div class="info-box">
+        <span>Alertas</span>
+        <strong id="alertCounter">0</strong>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="filter-box">
+        <label for="sensorFilter">Buscar sensor</label>
+        <input type="text" id="sensorFilter" aria-label="Buscar sensor" placeholder="Nombre, sector o ID">
+      </div>
+      <button id="resetStorageBtn" class="btn-secondary" aria-label="Restablecer datos">Restablecer datos</button>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <section class="left-panel">
+      <div class="card status-card">
+        <h2>Estado General</h2>
+        <div id="generalStatus" class="general-status">Cargando datos del sistema...</div>
+      </div>
+      <div class="card">
+        <h2>Resumen</h2>
+        <div class="stats">
+          <div>
+            <h3>Normales</h3>
+            <p id="normalCount">0</p>
+          </div>
+          <div>
+            <h3>Vigilancia</h3>
+            <p id="watchCount">0</p>
+          </div>
+          <div>
+            <h3>Advertencia</h3>
+            <p id="warningCount">0</p>
+          </div>
+          <div>
+            <h3>Posibles</h3>
+            <p id="possibleCount">0</p>
+          </div>
+          <div>
+            <h3>Incendios</h3>
+            <p id="fireCount">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Distribución de Estados</h2>
+        <div id="stateChart" class="state-chart">
+          <div class="state-row">
+            <span>Normal</span>
+            <div class="state-bar">
+              <div class="state-progress state-normal" data-count="normal"></div>
+            </div>
+            <strong id="barNormal">0</strong>
+          </div>
+          <div class="state-row">
+            <span>Vigilancia</span>
+            <div class="state-bar">
+              <div class="state-progress state-vigilancia" data-count="vigilancia"></div>
+            </div>
+            <strong id="barVigilancia">0</strong>
+          </div>
+          <div class="state-row">
+            <span>Advertencia</span>
+            <div class="state-bar">
+              <div class="state-progress state-advertencia" data-count="advertencia"></div>
+            </div>
+            <strong id="barAdvertencia">0</strong>
+          </div>
+          <div class="state-row">
+            <span>Posible</span>
+            <div class="state-bar">
+              <div class="state-progress state-posible" data-count="posible"></div>
+            </div>
+            <strong id="barPosible">0</strong>
+          </div>
+          <div class="state-row">
+            <span>Incendio</span>
+            <div class="state-bar">
+              <div class="state-progress state-incendio" data-count="incendio"></div>
+            </div>
+            <strong id="barIncendio">0</strong>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Lista de Sensores</h2>
+        <div id="sensorList" class="sensor-list"></div>
+      </div>
+    </section>
+
+    <section class="center-panel">
+      <div class="card map-card">
+        <div class="map-header">
+          <div>
+            <h2>Mapa de Monitoreo</h2>
+            <p>Arrastra los sensores en el mapa para simular nuevos emplazamientos y actualizar su ubicación en tiempo real.</p>
+          </div>
+          <button id="addSensorBtn" class="btn-primary">➕ Agregar Sensor</button>
+        </div>
+        <div id="map"></div>
+      </div>
+      <div class="card">
+        <h2>Historial del Sistema</h2>
+        <div id="eventLog" class="event-log">
+          <div class="event-item">
+            <span class="event-time">--:--</span>
+            <span>Esperando eventos del sistema...</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="right-panel">
+      <div class="card">
+        <h2>Sensor Seleccionado</h2>
+        <div id="sensorInfo" class="sensor-info">Seleccione un sensor desde el mapa.</div>
+      </div>
+      <div class="card">
+        <h2>Editar Sensor</h2>
+        <form id="sensorForm">
+          <div class="form-group">
+            <label for="sensorId">ID</label>
+            <input type="text" id="sensorId" readonly>
+          </div>
+          <div class="form-group">
+            <label for="sensorName">Nombre</label>
+            <input type="text" id="sensorName">
+          </div>
+          <div class="form-group">
+            <label for="sensorSector">Sector</label>
+            <input type="text" id="sensorSector">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="sensorTemp">Temperatura °C</label>
+              <input type="number" id="sensorTemp" min="-20" max="120">
+            </div>
+            <div class="form-group">
+              <label for="sensorSmoke">Humo %</label>
+              <input type="number" id="sensorSmoke" min="0" max="100">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="sensorLat">Latitud</label>
+              <input type="number" step="any" id="sensorLat">
+            </div>
+            <div class="form-group">
+              <label for="sensorLng">Longitud</label>
+              <input type="number" step="any" id="sensorLng">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="sensorStatus">Estado</label>
+            <input type="text" id="sensorStatus" readonly>
+          </div>
+          <div class="button-group">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <button type="button" id="deleteSensorBtn" class="btn-secondary">Eliminar</button>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Simulación Rápida</h2>
+        <p class="subtext">Aplica valores preconfigurados para evaluar rápidamente el comportamiento del sensor.</p>
+        <div class="quick-buttons">
+          <button class="btn-quick normal" data-mode="normal">🟢 Normal</button>
+          <button class="btn-quick vigilancia" data-mode="vigilancia">🟡 Vigilancia</button>
+          <button class="btn-quick advertencia" data-mode="advertencia">🟠 Advertencia</button>
+          <button class="btn-quick posible" data-mode="posible">🔴 Posible Incendio</button>
+          <button class="btn-quick incendio" data-mode="incendio">🚨 Incendio Confirmado</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Estado del Nodo</h2>
+        <div class="node-status">
+          <div class="status-item"><span>🔋 Batería</span><strong id="batteryLevel">100%</strong></div>
+          <div class="status-item"><span>📶 Señal</span><strong id="signalLevel">Excelente</strong></div>
+          <div class="status-item"><span>🕒 Última comunicación</span><strong id="lastCommunication">Hace segundos</strong></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Leyenda</h2>
+        <div class="legend">
+          <div><span class="legend-color green"></span>Normal</div>
+          <div><span class="legend-color yellow"></span>Vigilancia</div>
+          <div><span class="legend-color orange"></span>Advertencia</div>
+          <div><span class="legend-color red"></span>Posible Incendio</div>
+          <div><span class="legend-color darkred"></span>Incendio Confirmado</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="notification" class="notification hidden">
+    <div class="notification-icon">🚨</div>
+    <div>
+      <h3 id="notificationTitle">Nueva alerta</h3>
+      <p id="notificationText">Esperando eventos...</p>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
